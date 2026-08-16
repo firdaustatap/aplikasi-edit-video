@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Video Editor (Mini CapCut)</title>
+    <title>Web Editor Pro (Mini CapCut)</title>
     
-    <!-- Script Keamanan Wajib untuk GitHub Pages -->
     <script src="coi-serviceworker.min.js"></script>
-    
-    <!-- Mesin Pemroses Video FFmpeg -->
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     
     <style>
@@ -22,7 +19,7 @@
             --text-muted: #888;
         }
 
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-main); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-main); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
         header { background-color: var(--bg-panel); padding: 12px 20px; font-size: 18px; font-weight: bold; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
         
         .workspace { display: flex; flex: 1; padding: 10px; gap: 10px; height: calc(100vh - 250px); }
@@ -30,35 +27,45 @@
         video { max-width: 100%; max-height: 100%; border-radius: 8px; }
         
         .tools-section { flex: 1; background-color: var(--bg-panel); padding: 20px; border-radius: 8px; border: 1px solid #333; overflow-y: auto; }
-        h3 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px; color: #60a5fa; }
+        h3 { margin-top: 0; font-size: 15px; border-bottom: 1px solid #444; padding-bottom: 10px; color: #60a5fa; }
         
         .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; font-size: 13px; margin-bottom: 5px; color: var(--text-muted); }
-        .input-group input[type="file"], .input-group input[type="number"] { width: 90%; padding: 8px; background-color: #2a2a2a; border: 1px solid #444; color: white; border-radius: 4px; }
+        .input-group label { display: block; font-size: 12px; margin-bottom: 5px; color: var(--text-muted); }
+        .input-group input[type="number"] { width: 90%; padding: 8px; background-color: #2a2a2a; border: 1px solid #444; color: white; border-radius: 4px; }
         
-        button { width: 100%; background-color: var(--accent); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; transition: background 0.2s; }
+        button { width: 100%; background-color: var(--accent); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; transition: 0.2s; }
         button:hover { background-color: #1d4ed8; }
         button:disabled { background-color: #444; color: #888; cursor: not-allowed; }
-        .btn-green { background-color: var(--accent-green); }
+        .btn-green { background-color: var(--accent-green); margin-top: 20px; }
         .btn-green:hover { background-color: #15803d; }
         
-        .divider { border-top: 1px dashed #444; margin: 20px 0; }
-
-        #statusBox { margin-top: 15px; padding: 10px; background-color: #2a2a2a; border-radius: 4px; font-size: 12px; color: #4ade80; word-wrap: break-word; }
+        #statusBox { margin-top: 15px; padding: 10px; background-color: #2a2a2a; border-radius: 4px; font-size: 12px; color: #4ade80; }
         
-        .timeline-section { height: 200px; background-color: var(--bg-timeline); border-top: 1px solid #333; padding: 10px 20px; display: flex; flex-direction: column; gap: 10px; overflow-x: auto; overflow-y: hidden; }
-        .timeline-header { font-size: 12px; color: var(--text-muted); }
+        /* Area Timeline Baru */
+        .timeline-section { height: 220px; background-color: var(--bg-timeline); border-top: 1px solid #333; display: flex; flex-direction: column; }
+        .timeline-header { padding: 10px 20px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .timeline-title { font-size: 13px; font-weight: bold; color: var(--text-muted); }
+        .btn-add { background: #3b82f6; width: auto; padding: 5px 15px; font-size: 12px; margin: 0; }
         
-        .track { height: 60px; background-color: #222; border-radius: 4px; position: relative; border: 1px solid #333; display: flex; align-items: center; padding-left: 100px; overflow-x: auto; gap: 5px; }
-        .track::before { content: "Track Utama"; position: absolute; left: 10px; color: #555; font-size: 12px; pointer-events: none; font-weight: bold; }
-        .clip-item { height: 80%; background-color: var(--accent); border-radius: 4px; padding: 0 15px; display: flex; align-items: center; font-size: 12px; border: 1px solid #60a5fa; opacity: 0.9; white-space: nowrap; }
+        .track-container { flex: 1; padding: 15px 20px; overflow-x: auto; overflow-y: hidden; display: flex; align-items: center; }
+        .track { height: 80px; display: flex; gap: 10px; align-items: center; min-width: 100%; padding-right: 50px; }
+        
+        /* Klip Video (Bisa di-drag) */
+        .clip-item { height: 100%; min-width: 120px; background-color: #2563eb; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; border: 2px solid transparent; cursor: grab; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; }
+        .clip-item:active { cursor: grabbing; transform: scale(0.98); }
+        .clip-item.selected { border-color: #fff; background-color: #1d4ed8; }
+        .clip-item.dragging { opacity: 0.4; border: 2px dashed #fff; }
+        
+        .clip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px; font-weight: bold; pointer-events: none; }
+        .delete-btn { position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; }
+        .delete-btn:hover { background: #ef4444; }
     </style>
 </head>
 <body>
 
     <header>
-        <div>🎬 Web Editor Pro (Mini CapCut)</div>
-        <a id="downloadBtn" href="#" style="display:none; background:#16a34a; padding:6px 15px; border-radius:4px; text-decoration:none; color:white; font-size:14px;">⬇️ Export Video</a>
+        <div>🎬 Web Editor Pro (Drag & Drop)</div>
+        <a id="downloadBtn" href="#" style="display:none; background:#16a34a; padding:6px 15px; border-radius:4px; text-decoration:none; color:white; font-size:14px;">⬇️ Unduh Hasil Akhir</a>
     </header>
 
     <div class="workspace">
@@ -67,13 +74,9 @@
         </div>
         
         <div class="tools-section">
+            <h3>✂️ Edit Klip Terpilih</h3>
+            <p style="font-size:11px; color:#aaa; margin-top:-5px;">Klik salah satu video di timeline untuk memotongnya.</p>
             
-            <!-- ALAT PEMOTONG -->
-            <h3>✂️ Alat Pemotong</h3>
-            <div class="input-group">
-                <label>Pilih 1 Video Mentah</label>
-                <input type="file" id="uploadCut" accept="video/mp4, video/mov">
-            </div>
             <div style="display: flex; gap: 10px;">
                 <div class="input-group" style="flex: 1;">
                     <label>Mulai (Detik)</label>
@@ -81,29 +84,26 @@
                 </div>
                 <div class="input-group" style="flex: 1;">
                     <label>Akhir (Detik)</label>
-                    <input type="number" id="endTime" value="15" min="1">
+                    <input type="number" id="endTime" value="10" min="1">
                 </div>
             </div>
-            <button id="btnCut">Proses Potong</button>
+            <button id="btnCut" disabled>Potong Klip Ini</button>
 
-            <div class="divider"></div>
-
-            <!-- ALAT PENGGABUNG -->
-            <h3>🔗 Alat Penggabung</h3>
-            <div class="input-group">
-                <label>Pilih Beberapa Video (Tahan Ctrl/Shift)</label>
-                <input type="file" id="uploadMerge" accept="video/mp4, video/mov" multiple>
-            </div>
-            <button id="btnMerge" class="btn-green">Proses Gabung</button>
-
-            <div id="statusBox">Status: Menunggu instruksi...</div>
+            <button id="btnMerge" class="btn-green">🔗 Gabung Semua Video di Timeline</button>
+            <div id="statusBox">Status: Siap! Masukkan video ke timeline.</div>
         </div>
     </div>
 
     <div class="timeline-section">
-        <div class="timeline-header">TIMELINE KLIP</div>
-        <div class="track" id="mainTrack">
-            <!-- Representasi klip akan muncul di sini -->
+        <div class="timeline-header">
+            <span class="timeline-title">TIMELINE VIDEO</span>
+            <input type="file" id="uploadTimeline" accept="video/mp4, video/mov" multiple style="display: none;">
+            <button class="btn-add" onclick="document.getElementById('uploadTimeline').click()">➕ Tambah Video</button>
+        </div>
+        <div class="track-container">
+            <div class="track" id="mainTrack">
+                <!-- Klip akan muncul di sini -->
+            </div>
         </div>
     </div>
 
@@ -111,114 +111,181 @@
         const { createFFmpeg, fetchFile } = FFmpeg;
         const ffmpeg = createFFmpeg({ log: true });
         
+        let timelineFiles = []; // Menyimpan urutan file video
+        let selectedIndex = null; // Menyimpan indeks klip yang sedang diklik
+        let draggedIndex = null;
+
+        const mainTrack = document.getElementById('mainTrack');
+        const uploadTimeline = document.getElementById('uploadTimeline');
         const videoPreview = document.getElementById('videoPreview');
+        const btnCut = document.getElementById('btnCut');
+        const btnMerge = document.getElementById('btnMerge');
         const statusBox = document.getElementById('statusBox');
         const downloadBtn = document.getElementById('downloadBtn');
-        const mainTrack = document.getElementById('mainTrack');
 
-        // Elemen Potong
-        const uploadCut = document.getElementById('uploadCut');
-        const btnCut = document.getElementById('btnCut');
-        
-        // Elemen Gabung
-        const uploadMerge = document.getElementById('uploadMerge');
-        const btnMerge = document.getElementById('btnMerge');
-
-        // --- FUNGSI UPDATE UI SAAT INPUT VIDEO ---
-        uploadCut.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                videoPreview.src = URL.createObjectURL(file);
-                downloadBtn.style.display = 'none';
-                mainTrack.innerHTML = `<div class="clip-item">🎞️ ${file.name}</div>`;
-                statusBox.innerText = "Status: Mode Potong siap digunakan.";
-            }
-        });
-
-        uploadMerge.addEventListener('change', (e) => {
-            const files = e.target.files;
+        // 1. TAMBAH VIDEO KE TIMELINE
+        uploadTimeline.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
             if (files.length > 0) {
-                downloadBtn.style.display = 'none';
-                mainTrack.innerHTML = '';
-                for (let i = 0; i < files.length; i++) {
-                    mainTrack.innerHTML += `<div class="clip-item">🎞️ ${files[i].name}</div>`;
-                }
-                statusBox.innerText = `Status: ${files.length} video siap digabungkan.`;
+                timelineFiles = timelineFiles.concat(files);
+                renderTimeline();
+                statusBox.innerText = `Status: ${files.length} video ditambahkan ke timeline.`;
             }
+            uploadTimeline.value = ""; // Reset input
         });
 
-        // --- FUNGSI POTONG VIDEO ---
-        btnCut.addEventListener('click', async () => {
-            const file = uploadCut.files[0];
-            if (!file) return alert("Pilih 1 video di Alat Pemotong!");
+        // 2. RENDER TIMELINE & DRAG-DROP LOGIC
+        function renderTimeline() {
+            mainTrack.innerHTML = '';
+            
+            if(timelineFiles.length === 0) {
+                mainTrack.innerHTML = '<span style="color:#555; font-size:12px; font-style:italic;">Timeline kosong. Klik "+ Tambah Video".</span>';
+                videoPreview.src = "";
+                btnCut.disabled = true;
+                return;
+            }
 
+            timelineFiles.forEach((file, index) => {
+                const clip = document.createElement('div');
+                clip.className = `clip-item ${index === selectedIndex ? 'selected' : ''}`;
+                clip.draggable = true;
+                
+                clip.innerHTML = `
+                    <div class="clip-name">🎞️ ${file.name}</div>
+                    <div class="delete-btn" title="Hapus">X</div>
+                `;
+
+                // Logika Pilih Klip untuk di-preview/potong
+                clip.addEventListener('click', (e) => {
+                    if (e.target.className !== 'delete-btn') {
+                        selectedIndex = index;
+                        videoPreview.src = URL.createObjectURL(file);
+                        btnCut.disabled = false;
+                        renderTimeline(); // Update warna seleksi
+                    }
+                });
+
+                // Logika Hapus
+                clip.querySelector('.delete-btn').addEventListener('click', () => {
+                    timelineFiles.splice(index, 1);
+                    if (selectedIndex === index) selectedIndex = null;
+                    renderTimeline();
+                });
+
+                // --- LOGIKA DRAG & DROP ---
+                clip.addEventListener('dragstart', () => {
+                    draggedIndex = index;
+                    setTimeout(() => clip.classList.add('dragging'), 0);
+                });
+
+                clip.addEventListener('dragend', () => {
+                    clip.classList.remove('dragging');
+                });
+
+                clip.addEventListener('dragover', (e) => {
+                    e.preventDefault(); // Wajib agar bisa drop
+                });
+
+                clip.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (draggedIndex !== null && draggedIndex !== index) {
+                        // Tukar posisi di array
+                        const draggedFile = timelineFiles.splice(draggedIndex, 1)[0];
+                        timelineFiles.splice(index, 0, draggedFile);
+                        
+                        // Perbaiki seleksi jika klip yang dipilih ikut bergeser
+                        if (selectedIndex === draggedIndex) selectedIndex = index;
+                        else if (selectedIndex === index) selectedIndex = draggedIndex;
+                        
+                        renderTimeline();
+                    }
+                });
+
+                mainTrack.appendChild(clip);
+            });
+        }
+
+        // 3. FITUR POTONG (Ubah klip langsung di timeline)
+        btnCut.addEventListener('click', async () => {
+            if (selectedIndex === null) return;
+            const file = timelineFiles[selectedIndex];
             const startTime = document.getElementById('startTime').value;
             const endTime = document.getElementById('endTime').value;
 
             btnCut.disabled = true; btnMerge.disabled = true;
             statusBox.style.color = "#fbbf24";
-            statusBox.innerText = "Memproses pemotongan... Jangan tutup halaman.";
+            statusBox.innerText = `Memotong ${file.name}... Jangan tutup halaman.`;
 
             try {
                 if (!ffmpeg.isLoaded()) await ffmpeg.load();
 
-                ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
-                await ffmpeg.run('-i', 'input.mp4', '-ss', startTime, '-to', endTime, '-c', 'copy', 'output.mp4');
+                const inputName = `temp_in_${Date.now()}.mp4`;
+                const outputName = `temp_out_${Date.now()}.mp4`;
 
-                const data = ffmpeg.FS('readFile', 'output.mp4');
-                const videoUrl = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
+                ffmpeg.FS('writeFile', inputName, await fetchFile(file));
+                await ffmpeg.run('-i', inputName, '-ss', startTime, '-to', endTime, '-c', 'copy', outputName);
+
+                const data = ffmpeg.FS('readFile', outputName);
+                const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
                 
-                downloadBtn.href = videoUrl; downloadBtn.download = `Potongan_${file.name}`; downloadBtn.style.display = 'block';
-                videoPreview.src = videoUrl;
-                statusBox.style.color = "#4ade80"; statusBox.innerText = "Potong selesai! Klik 'Export Video'.";
-                mainTrack.innerHTML = `<div class="clip-item" style="background:#16a34a;">✅ Hasil Potong</div>`;
+                // Ganti file asli di timeline dengan hasil potongan
+                const newFile = new File([videoBlob], `(Cut) ${file.name}`, { type: 'video/mp4' });
+                timelineFiles[selectedIndex] = newFile;
+                
+                videoPreview.src = URL.createObjectURL(newFile);
+                renderTimeline();
+
+                statusBox.style.color = "#4ade80"; 
+                statusBox.innerText = "Klip berhasil dipotong dan diperbarui di timeline!";
             } catch (error) {
-                statusBox.style.color = "#ef4444"; statusBox.innerText = "Error memotong video. Cek Console.";
+                statusBox.style.color = "#ef4444"; statusBox.innerText = "Error memotong video.";
             } finally {
                 btnCut.disabled = false; btnMerge.disabled = false;
             }
         });
 
-        // --- FUNGSI GABUNG VIDEO ---
+        // 4. FITUR GABUNG SEMUA
         btnMerge.addEventListener('click', async () => {
-            const files = uploadMerge.files;
-            if (files.length < 2) return alert("Pilih minimal 2 video untuk digabungkan!");
+            if (timelineFiles.length < 2) return alert("Butuh minimal 2 video di timeline untuk digabung!");
 
             btnCut.disabled = true; btnMerge.disabled = true;
+            downloadBtn.style.display = 'none';
             statusBox.style.color = "#fbbf24";
-            statusBox.innerText = "Memproses penggabungan... Ini mungkin memakan waktu.";
+            statusBox.innerText = "Menjahit semua video di timeline... Tunggu sebentar.";
 
             try {
                 if (!ffmpeg.isLoaded()) await ffmpeg.load();
 
                 let listContent = '';
-                
-                // Menulis setiap file ke memori dan membuat daftar txt
-                for (let i = 0; i < files.length; i++) {
-                    const fileName = `vid${i}.mp4`;
-                    ffmpeg.FS('writeFile', fileName, await fetchFile(files[i]));
+                for (let i = 0; i < timelineFiles.length; i++) {
+                    const fileName = `merge_${i}.mp4`;
+                    ffmpeg.FS('writeFile', fileName, await fetchFile(timelineFiles[i]));
                     listContent += `file '${fileName}'\n`;
                 }
 
-                // Menulis file txt sebagai instruksi gabung untuk FFmpeg
                 ffmpeg.FS('writeFile', 'list.txt', listContent);
-
-                // Menjalankan perintah gabung beruntun
                 await ffmpeg.run('-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', 'output.mp4');
 
                 const data = ffmpeg.FS('readFile', 'output.mp4');
-                const videoUrl = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
+                const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+                const videoUrl = URL.createObjectURL(videoBlob);
                 
-                downloadBtn.href = videoUrl; downloadBtn.download = `Gabungan_Video.mp4`; downloadBtn.style.display = 'block';
+                downloadBtn.href = videoUrl; downloadBtn.download = `Hasil_Export_Tijarah.mp4`; 
+                downloadBtn.style.display = 'block';
                 videoPreview.src = videoUrl;
-                statusBox.style.color = "#4ade80"; statusBox.innerText = "Gabung selesai! Klik 'Export Video'.";
-                mainTrack.innerHTML = `<div class="clip-item" style="background:#16a34a; width: 100%; justify-content: center;">✅ 1 Video Gabungan (${files.length} Klip)</div>`;
+                
+                statusBox.style.color = "#4ade80"; 
+                statusBox.innerText = "Berhasil digabung! Klik tombol unduh hijau di atas.";
             } catch (error) {
-                statusBox.style.color = "#ef4444"; statusBox.innerText = "Error menggabung! Pastikan resolusi/format semua video sama.";
+                statusBox.style.color = "#ef4444"; 
+                statusBox.innerText = "Error menggabung! Pastikan resolusi & orientasi layar semua video sama.";
             } finally {
                 btnCut.disabled = false; btnMerge.disabled = false;
             }
         });
+
+        // Render awal
+        renderTimeline();
     </script>
 </body>
 </html>
