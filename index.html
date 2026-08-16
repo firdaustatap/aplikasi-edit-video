@@ -2,165 +2,125 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Editor Pro (Full Version)</title>
-    
-    <!-- Script Keamanan -->
+    <title>Web Editor Pro (Final Stable)</title>
     <script src="coi-serviceworker.min.js"></script>
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
-    
     <style>
-        :root { --bg-main: #121212; --bg-panel: #1e1e1e; --bg-timeline: #151515; --accent: #2563eb; --accent-green: #16a34a; --accent-yellow: #ca8a04; --accent-purple: #9333ea; --text-main: #e0e0e0; }
-        body { font-family: sans-serif; background-color: var(--bg-main); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        header { background-color: var(--bg-panel); padding: 10px 20px; font-weight: bold; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .workspace { display: flex; flex: 1; padding: 10px; gap: 10px; height: calc(100vh - 280px); }
-        .preview-section { flex: 3; background-color: #000; border-radius: 8px; display: flex; justify-content: center; align-items: center; position: relative; }
+        :root { --bg: #121212; --panel: #1e1e1e; --accent: #2563eb; --text: #fff; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+        .workspace { display: flex; padding: 10px; gap: 10px; height: 350px; }
+        .preview-section { flex: 2; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
         video { max-width: 100%; max-height: 100%; }
-        #textOverlay { position: absolute; bottom: 80px; color: white; font-size: 32px; background: rgba(0,0,0,0.5); padding: 10px; display: none; }
-        .tools-section { flex: 1; background-color: var(--bg-panel); padding: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
-        button { width: 100%; padding: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
-        .btn-green { background: var(--accent-green); } .btn-yellow { background: var(--accent-yellow); } .btn-purple { background: var(--accent-purple); }
-        .timeline-section { height: 260px; background-color: var(--bg-timeline); border-top: 1px solid #333; }
-        .track-row { display: flex; height: 80px; border-bottom: 1px solid #2a2a2a; }
-        .track-controls { width: 180px; background: #111; padding: 5px; font-size: 11px; display: flex; flex-direction: column; gap: 3px; }
-        .track-content { flex: 1; display: flex; align-items: center; padding: 0 10px; gap: 5px; overflow-x: auto; }
-        .clip-bar { height: 40px; padding: 0 10px; background: #2563eb; color: white; display: flex; align-items: center; border-radius: 4px; font-size: 11px; cursor: pointer; white-space: nowrap; }
-        .clip-bar.text-bar { background: #9333ea; }
-        .clip-bar.playing { border: 2px solid #fde047; }
+        #textOverlay { position: absolute; bottom: 80px; font-size: 24px; background: rgba(0,0,0,0.5); padding: 5px 15px; display: none; }
+        .tools { flex: 1; background: var(--panel); padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        button { padding: 10px; background: var(--accent); color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .timeline { height: 250px; background: #1a1a1a; padding: 10px; overflow-y: auto; }
+        .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background: #222; padding: 5px; border-radius: 4px; }
+        .content { display: flex; gap: 5px; overflow-x: auto; flex-grow: 1; min-height: 50px; }
+        .clip { background: #2563eb; padding: 10px; border-radius: 4px; cursor: grab; font-size: 12px; white-space: nowrap; }
+        .clip.text { background: #9333ea; }
     </style>
 </head>
 <body>
-
-    <header>
-        <div>🎬 Web Editor Pro</div>
-        <a id="downloadBtn" href="#" style="display:none; background:#16a34a; padding:5px 15px; border-radius:4px; text-decoration:none; color:white;">⬇️ Unduh Video</a>
-    </header>
-
+    <header style="padding:10px 20px; font-weight:bold; background:#000;">🎬 Web Editor Pro</header>
     <div class="workspace">
         <div class="preview-section">
             <video id="videoPreview" controls></video>
             <div id="textOverlay"></div>
         </div>
-        <div class="tools-section">
-            <h3>✂️ Edit Klip</h3>
-            <input type="number" id="cutStart" placeholder="Mulai (s)" value="0">
-            <input type="number" id="cutEnd" placeholder="Akhir (s)" value="10">
-            <button id="btnCut">Potong Klip Terpilih</button>
-            <h3>🔗 Eksekusi</h3>
-            <button id="btnPreviewAll" class="btn-yellow">▶️ Play Semua</button>
-            <button id="btnMerge" class="btn-green">🔗 Render & Gabung</button>
-            <div id="statusBox" style="font-size:11px; color:#aaa; margin-top:10px;">Status: Siap.</div>
+        <div class="tools">
+            <h3 style="margin:0;">Alat Render</h3>
+            <button id="btnMerge" style="background:#16a34a;">🔗 Render & Gabung Video</button>
+            <a id="downloadBtn" style="display:none; text-align:center; color:#4ade80; text-decoration:none;">⬇️ Klik Untuk Unduh</a>
+            <div id="statusBox" style="font-size:12px; color:#aaa;">Status: Siap.</div>
         </div>
     </div>
 
-    <div class="timeline-section">
-        <div class="track-row">
-            <div class="track-controls">
-                <b>V1 (Video)</b>
-                <input type="file" id="uploadTimeline" accept="video/mp4" multiple style="display:none;">
-                <button onclick="document.getElementById('uploadTimeline').click()">➕ Tambah Video</button>
-            </div>
-            <div class="track-content" id="videoTrack"></div>
+    <div class="timeline">
+        <!-- V1 TRACK -->
+        <div class="row">
+            <div style="width:120px; font-size:12px; font-weight:bold;">V1 (Video)</div>
+            <input type="file" id="upV" accept="video/mp4" multiple style="display:none;">
+            <button style="width:100px;" onclick="upV.click()">➕ Video</button>
+            <div class="content" id="trackV"></div>
         </div>
-        <div class="track-row">
-            <div class="track-controls">
-                <b>T1 (Teks Overlay)</b>
-                <input type="text" id="textInput" placeholder="Teks...">
-                <div style="display:flex; gap:2px;">
-                    <input type="number" id="textStart" placeholder="S">
-                    <input type="number" id="textEnd" placeholder="E">
-                    <button id="btnAddText" class="btn-purple" style="width:50px;">+</button>
-                </div>
-            </div>
-            <div class="track-content" id="textTrack"></div>
+        <!-- T1 TRACK -->
+        <div class="row">
+            <div style="width:120px; font-size:12px; font-weight:bold;">T1 (Teks)</div>
+            <input type="text" id="inText" placeholder="Teks" style="width:80px;">
+            <input type="number" id="inStart" placeholder="Mulai(s)" style="width:60px;">
+            <input type="number" id="inEnd" placeholder="Akhir(s)" style="width:60px;">
+            <button id="btnAddText" style="width:50px;">+</button>
+            <div class="content" id="trackT"></div>
         </div>
     </div>
 
     <script>
         const { createFFmpeg, fetchFile } = FFmpeg;
         const ffmpeg = createFFmpeg({ log: true });
-        let videoFiles = [], textLayers = [], selectedIndex = null, isPreview = false, seqIndex = 0;
-        const videoPreview = document.getElementById('videoPreview'), textOverlay = document.getElementById('textOverlay');
+        let vFiles = [], tLayers = [], dragIdx = null;
 
-        // Logic Rendering Timeline
-        function renderAll() {
-            document.getElementById('videoTrack').innerHTML = '';
-            videoFiles.forEach((f, i) => {
+        function render() {
+            const vTrack = document.getElementById('trackV'); vTrack.innerHTML = '';
+            vFiles.forEach((f, i) => {
                 const div = document.createElement('div');
-                div.className = `clip-bar video-clip ${i === selectedIndex ? 'playing':''}`;
-                div.innerText = f.name;
-                div.onclick = () => { selectedIndex = i; videoPreview.src = URL.createObjectURL(f); renderAll(); };
-                document.getElementById('videoTrack').appendChild(div);
+                div.className = 'clip'; div.draggable = true; div.innerText = f.name;
+                div.ondragstart = () => dragIdx = i;
+                div.ondragover = (e) => e.preventDefault();
+                div.ondrop = () => {
+                    let temp = vFiles[dragIdx]; vFiles[dragIdx] = vFiles[i]; vFiles[i] = temp;
+                    render();
+                };
+                div.onclick = () => document.getElementById('videoPreview').src = URL.createObjectURL(f);
+                vTrack.appendChild(div);
             });
-            document.getElementById('textTrack').innerHTML = '';
-            textLayers.forEach((t, i) => {
+            const tTrack = document.getElementById('trackT'); tTrack.innerHTML = '';
+            tLayers.forEach((t, i) => {
                 const div = document.createElement('div');
-                div.className = 'clip-bar text-bar';
-                div.innerText = `"${t.text}" (${t.start}s-${t.end}s)`;
-                div.onclick = () => { textLayers.splice(i,1); renderAll(); };
-                document.getElementById('textTrack').appendChild(div);
+                div.className = 'clip text'; div.innerText = t.text;
+                div.onclick = () => { tLayers.splice(i,1); render(); };
+                tTrack.appendChild(div);
             });
         }
 
-        document.getElementById('uploadTimeline').onchange = (e) => { 
-            videoFiles = videoFiles.concat(Array.from(e.target.files)); renderAll(); 
-        };
-
+        document.getElementById('upV').onchange = (e) => { vFiles.push(...e.target.files); render(); };
         document.getElementById('btnAddText').onclick = () => {
-            textLayers.push({ text: document.getElementById('textInput').value, start: document.getElementById('textStart').value, end: document.getElementById('textEnd').value });
-            renderAll();
+            tLayers.push({text: inText.value, start: inStart.value, end: inEnd.value});
+            render();
         };
 
-        videoPreview.ontimeupdate = () => {
-            const t = textLayers.find(x => videoPreview.currentTime >= x.start && videoPreview.currentTime <= x.end);
-            if(t) { textOverlay.innerText = t.text; textOverlay.style.display = 'block'; }
-            else { textOverlay.style.display = 'none'; }
-        };
-
-        document.getElementById('btnCut').onclick = async () => {
-            if(selectedIndex === null) return;
-            await ffmpeg.load();
-            ffmpeg.FS('writeFile', 'in.mp4', await fetchFile(videoFiles[selectedIndex]));
-            await ffmpeg.run('-i', 'in.mp4', '-ss', document.getElementById('cutStart').value, '-to', document.getElementById('cutEnd').value, '-c', 'copy', 'out.mp4');
-            videoFiles[selectedIndex] = new File([new Blob([ffmpeg.FS('readFile', 'out.mp4').buffer])], 'cut_'+videoFiles[selectedIndex].name);
-            renderAll();
-        };
-
-        document.getElementById('btnPreviewAll').onclick = () => {
-            seqIndex = 0;
-            const playSeq = () => {
-                if(seqIndex >= videoFiles.length) return;
-                videoPreview.src = URL.createObjectURL(videoFiles[seqIndex]);
-                videoPreview.play();
-            };
-            videoPreview.onended = () => { seqIndex++; playSeq(); };
-            playSeq();
+        // Live Preview Teks
+        document.getElementById('videoPreview').ontimeupdate = (e) => {
+            const t = tLayers.find(x => e.target.currentTime >= x.start && e.target.currentTime <= x.end);
+            textOverlay.innerText = t ? t.text : '';
+            textOverlay.style.display = t ? 'block' : 'none';
         };
 
         document.getElementById('btnMerge').onclick = async () => {
             await ffmpeg.load();
             const font = await fetch('https://cdn.jsdelivr.net/gh/google/fonts/ofl/roboto/Roboto-Bold.ttf').then(r => r.arrayBuffer());
-            ffmpeg.FS('writeFile', 'f.ttf', new Uint8Array(font));
+            ffmpeg.FS('writeFile', 'font.ttf', new Uint8Array(font));
             
-            let list = "", args = [];
-            for(let i=0; i<videoFiles.length; i++) {
-                ffmpeg.FS('writeFile', `v${i}.mp4`, await fetchFile(videoFiles[i]));
+            let args = [], filter = "", concat = "";
+            for(let i=0; i<vFiles.length; i++) {
+                ffmpeg.FS('writeFile', `v${i}.mp4`, await fetchFile(vFiles[i]));
                 args.push('-i', `v${i}.mp4`);
-                list += `file 'v${i}.mp4'\n`;
+                filter += `[${i}:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30[v${i}];`;
+                concat += `[v${i}][${i}:a]`;
             }
-            ffmpeg.FS('writeFile', 'list.txt', list);
+            filter += `${concat}concat=n=${vFiles.length}:v=1:a=1[v_out][a_out];`;
             
-            // Konkatenasi + Drawtext
-            let filter = `concat=n=${videoFiles.length}:v=1:a=1[v][a]`;
-            textLayers.forEach((t, i) => {
-                filter = `[v]drawtext=fontfile=f.ttf:text='${t.text}':enable='between(t,${t.start},${t.end})':fontsize=48:x=(w-text_w)/2:y=h-text_h-50[v${i+1}];` + filter.replace(/\[v\]/g, `[v${i+1}]`);
+            // Add Text Filter
+            let currentV = "v_out";
+            tLayers.forEach((t, i) => {
+                let nextV = `v_text${i}`;
+                filter += `[${currentV}]drawtext=fontfile=font.ttf:text='${t.text.replace(/'/g, "")}':enable='between(t,${t.start},${t.end})':fontsize=48:x=(w-text_w)/2:y=h-text_h-100[${nextV}];`;
+                currentV = nextV;
             });
             
-            await ffmpeg.run(...args, '-filter_complex', filter, '-map', '[v]', '-map', '[a]', 'out.mp4');
-            const data = ffmpeg.FS('readFile', 'out.mp4');
-            const url = URL.createObjectURL(new Blob([data.buffer]));
-            document.getElementById('downloadBtn').href = url;
-            document.getElementById('downloadBtn').style.display = 'block';
+            await ffmpeg.run(...args, '-filter_complex', filter, '-map', `[${currentV}]`, '-map', '[a_out]', 'out.mp4');
+            const url = URL.createObjectURL(new Blob([ffmpeg.FS('readFile', 'out.mp4').buffer]));
+            downloadBtn.href = url; downloadBtn.style.display = 'block'; downloadBtn.innerText = "⬇️ Unduh Hasil Render";
         };
     </script>
 </body>
