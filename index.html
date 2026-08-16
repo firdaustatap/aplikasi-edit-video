@@ -3,21 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Editor Pro (Drag & Drop)</title>
+    <title>Web Editor Pro (Render Mulus)</title>
     
     <script src="coi-serviceworker.min.js"></script>
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     
     <style>
         :root {
-            --bg-main: #121212;
-            --bg-panel: #1e1e1e;
-            --bg-timeline: #151515;
-            --accent: #2563eb;
-            --accent-green: #16a34a;
-            --accent-yellow: #ca8a04;
-            --text-main: #e0e0e0;
-            --text-muted: #888;
+            --bg-main: #121212; --bg-panel: #1e1e1e; --bg-timeline: #151515;
+            --accent: #2563eb; --accent-green: #16a34a; --accent-yellow: #ca8a04;
+            --text-main: #e0e0e0; --text-muted: #888;
         }
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-main); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
@@ -55,7 +50,7 @@
         .clip-item { height: 100%; min-width: 120px; background-color: #2563eb; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; border: 2px solid transparent; cursor: grab; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s; }
         .clip-item:active { cursor: grabbing; transform: scale(0.98); }
         .clip-item.selected { border-color: #fff; background-color: #1d4ed8; }
-        .clip-item.playing { border-color: #fde047; background-color: #a16207; } /* Warna saat di-play */
+        .clip-item.playing { border-color: #fde047; background-color: #a16207; }
         .clip-item.dragging { opacity: 0.4; border: 2px dashed #fff; }
         
         .clip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px; font-weight: bold; pointer-events: none; }
@@ -66,7 +61,7 @@
 <body>
 
     <header>
-        <div>🎬 Web Editor Pro (Drag & Drop)</div>
+        <div>🎬 Web Editor Pro (Render Mulus)</div>
         <a id="downloadBtn" href="#" style="display:none; background:#16a34a; padding:6px 15px; border-radius:4px; text-decoration:none; color:white; font-size:14px;">⬇️ Unduh Hasil Akhir</a>
     </header>
 
@@ -89,10 +84,9 @@
             </div>
             <button id="btnCut" disabled>Potong Klip Ini</button>
 
-            <!-- TOMBOL BARU UNTUK PREVIEW -->
-            <button id="btnPreviewAll" class="btn-yellow">▶️ Play Semua (Preview Timeline)</button>
-
-            <button id="btnMerge" class="btn-green">🔗 Gabung Semua Video</button>
+            <button id="btnPreviewAll" class="btn-yellow">▶️ Play Semua (Preview)</button>
+            <button id="btnMerge" class="btn-green">🔗 Render & Gabung Semua Video</button>
+            
             <div id="statusBox">Status: Siap! Masukkan video ke timeline.</div>
         </div>
     </div>
@@ -132,7 +126,7 @@
             if (files.length > 0) {
                 timelineFiles = timelineFiles.concat(files);
                 renderTimeline();
-                statusBox.innerText = `Status: ${files.length} video ditambahkan ke timeline.`;
+                statusBox.innerText = `Status: ${files.length} video ditambahkan.`;
             }
             uploadTimeline.value = ""; 
         });
@@ -150,20 +144,14 @@
             timelineFiles.forEach((file, index) => {
                 const clip = document.createElement('div');
                 clip.className = `clip-item ${index === selectedIndex ? 'selected' : ''}`;
-                // Tambahkan warna khusus jika sedang di-play di fitur Preview Semua
-                if (isPreviewingSequence && index === currentSequenceIndex) {
-                    clip.classList.add('playing');
-                }
+                if (isPreviewingSequence && index === currentSequenceIndex) clip.classList.add('playing');
                 
                 clip.draggable = true;
-                clip.innerHTML = `
-                    <div class="clip-name">🎞️ ${file.name}</div>
-                    <div class="delete-btn" title="Hapus">X</div>
-                `;
+                clip.innerHTML = `<div class="clip-name">🎞️ ${file.name}</div><div class="delete-btn" title="Hapus">X</div>`;
 
                 clip.addEventListener('click', (e) => {
                     if (e.target.className !== 'delete-btn') {
-                        isPreviewingSequence = false; // Matikan mode sequence jika klik manual
+                        isPreviewingSequence = false;
                         selectedIndex = index;
                         videoPreview.src = URL.createObjectURL(file);
                         btnCut.disabled = false;
@@ -195,44 +183,30 @@
             });
         }
 
-        // --- FITUR BARU: PLAY SEQUENCE (PREVIEW SEMUA) ---
+        // PREVIEW SEMUA
         btnPreviewAll.addEventListener('click', () => {
             if (timelineFiles.length === 0) return alert("Masukkan video ke timeline dulu!");
-            
-            isPreviewingSequence = true;
-            currentSequenceIndex = 0;
-            playNextInSequence();
+            isPreviewingSequence = true; currentSequenceIndex = 0; playNextInSequence();
         });
 
         function playNextInSequence() {
             if (currentSequenceIndex >= timelineFiles.length) {
-                // Selesai memutar semua
                 isPreviewingSequence = false;
                 statusBox.innerText = "Preview selesai. Susunan sudah pas?";
-                renderTimeline(); // Hapus warna kuning
-                return;
+                renderTimeline(); return;
             }
-
-            // Perbarui UI Timeline (Beri warna kuning pada klip yang sedang diputar)
             renderTimeline(); 
             statusBox.style.color = "#fde047";
             statusBox.innerText = `Memutar Klip ${currentSequenceIndex + 1} dari ${timelineFiles.length}...`;
-
-            // Putar video
-            const file = timelineFiles[currentSequenceIndex];
-            videoPreview.src = URL.createObjectURL(file);
+            videoPreview.src = URL.createObjectURL(timelineFiles[currentSequenceIndex]);
             videoPreview.play();
         }
 
-        // Listener otomatis: Jika video selesai, lanjut ke video berikutnya
         videoPreview.addEventListener('ended', () => {
-            if (isPreviewingSequence) {
-                currentSequenceIndex++;
-                playNextInSequence();
-            }
+            if (isPreviewingSequence) { currentSequenceIndex++; playNextInSequence(); }
         });
 
-        // --- FITUR POTONG ---
+        // POTONG VIDEO
         btnCut.addEventListener('click', async () => {
             if (selectedIndex === null) return;
             const file = timelineFiles[selectedIndex];
@@ -240,29 +214,23 @@
             const endTime = document.getElementById('endTime').value;
 
             btnCut.disabled = true; btnMerge.disabled = true; btnPreviewAll.disabled = true;
-            statusBox.style.color = "#fbbf24";
-            statusBox.innerText = `Memotong klip... Jangan tutup halaman.`;
+            statusBox.style.color = "#fbbf24"; statusBox.innerText = `Memotong klip... Jangan tutup halaman.`;
 
             try {
                 if (!ffmpeg.isLoaded()) await ffmpeg.load();
-
                 const inputName = `temp_in_${Date.now()}.mp4`;
                 const outputName = `temp_out_${Date.now()}.mp4`;
 
                 ffmpeg.FS('writeFile', inputName, await fetchFile(file));
                 await ffmpeg.run('-i', inputName, '-ss', startTime, '-to', endTime, '-c', 'copy', outputName);
 
-                const data = ffmpeg.FS('readFile', outputName);
-                const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-                
+                const videoBlob = new Blob([ffmpeg.FS('readFile', outputName).buffer], { type: 'video/mp4' });
                 const newFile = new File([videoBlob], `(Cut) ${file.name}`, { type: 'video/mp4' });
                 timelineFiles[selectedIndex] = newFile;
                 
                 videoPreview.src = URL.createObjectURL(newFile);
                 renderTimeline();
-
-                statusBox.style.color = "#4ade80"; 
-                statusBox.innerText = "Klip berhasil dipotong di timeline!";
+                statusBox.style.color = "#4ade80"; statusBox.innerText = "Klip berhasil dipotong!";
             } catch (error) {
                 statusBox.style.color = "#ef4444"; statusBox.innerText = "Error memotong video.";
             } finally {
@@ -270,41 +238,59 @@
             }
         });
 
-        // --- FITUR GABUNG ---
+        // RENDER DAN GABUNG VIDEO (MODE MULUS / FILTER COMPLEX)
         btnMerge.addEventListener('click', async () => {
             if (timelineFiles.length < 2) return alert("Butuh minimal 2 video di timeline untuk digabung!");
 
             btnCut.disabled = true; btnMerge.disabled = true; btnPreviewAll.disabled = true;
             downloadBtn.style.display = 'none';
             statusBox.style.color = "#fbbf24";
-            statusBox.innerText = "Menjahit semua video di timeline... Tunggu sebentar.";
+            statusBox.innerText = "Sedang me-render & menjahit video... (Proses ini butuh waktu, harap sabar).";
 
             try {
                 if (!ffmpeg.isLoaded()) await ffmpeg.load();
 
-                let listContent = '';
+                let args = [];
+                let filterComplex = "";
+                let concatStreams = "";
+
+                // Menulis file ke memori dan menyiapkan perintah render HD 720p
                 for (let i = 0; i < timelineFiles.length; i++) {
                     const fileName = `merge_${i}.mp4`;
                     ffmpeg.FS('writeFile', fileName, await fetchFile(timelineFiles[i]));
-                    listContent += `file '${fileName}'\n`;
+                    args.push('-i', fileName);
+
+                    // Memaksa resolusi seragam (1280x720) dan frame rate seragam (30fps)
+                    // Jika ada video tegak, otomatis diberi pinggiran hitam agar tidak gepeng
+                    filterComplex += `[${i}:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30[v${i}]; `;
+                    concatStreams += `[v${i}][${i}:a]`;
                 }
 
-                ffmpeg.FS('writeFile', 'list.txt', listContent);
-                await ffmpeg.run('-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', 'output.mp4');
+                // Perintah penggabungan setelah diseragamkan
+                filterComplex += `${concatStreams}concat=n=${timelineFiles.length}:v=1:a=1[v][a]`;
+
+                args.push('-filter_complex', filterComplex);
+                args.push('-map', '[v]', '-map', '[a]');
+                args.push('-preset', 'ultrafast'); // Render secepat mungkin untuk mode web
+                args.push('output.mp4');
+
+                // Jalankan proses render
+                await ffmpeg.run(...args);
 
                 const data = ffmpeg.FS('readFile', 'output.mp4');
                 const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
                 const videoUrl = URL.createObjectURL(videoBlob);
                 
-                downloadBtn.href = videoUrl; downloadBtn.download = `Hasil_Export_Editor.mp4`; 
+                downloadBtn.href = videoUrl; downloadBtn.download = `Export_Render_Mulus.mp4`; 
                 downloadBtn.style.display = 'block';
                 videoPreview.src = videoUrl;
                 
                 statusBox.style.color = "#4ade80"; 
-                statusBox.innerText = "Berhasil digabung! Klik tombol unduh hijau di atas.";
+                statusBox.innerText = "Selesai di-render! Video sekarang mulus. Klik tombol unduh.";
             } catch (error) {
+                console.error(error);
                 statusBox.style.color = "#ef4444"; 
-                statusBox.innerText = "Error menggabung! Pastikan resolusi & orientasi layar semua video sama.";
+                statusBox.innerText = "Error saat render! Pastikan semua video memiliki suara (audio track).";
             } finally {
                 btnCut.disabled = false; btnMerge.disabled = false; btnPreviewAll.disabled = false;
             }
