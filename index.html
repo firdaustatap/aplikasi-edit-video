@@ -6,73 +6,146 @@
     <script src="coi-serviceworker.min.js"></script>
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     <style>
-        body { background: #121212; color: #fff; font-family: sans-serif; margin: 0; }
-        .flex { display: flex; gap: 10px; padding: 10px; }
-        .preview { flex: 2; background: #000; height: 300px; display: flex; align-items: center; justify-content: center; position: relative; }
-        .controls { flex: 1; background: #1e1e1e; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .timeline { background: #1a1a1a; padding: 15px; min-height: 200px; }
-        .clip { background: #2563eb; padding: 10px; border-radius: 4px; cursor: grab; margin-right: 5px; font-size: 12px; display: inline-block; }
-        button { padding: 10px; cursor: pointer; background: #2563eb; color: white; border: none; border-radius: 4px; }
+        * { box-sizing: border-box; }
+        body { background: #121212; color: #fff; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: #000; padding: 12px 20px; font-weight: bold; font-size: 16px; border-bottom: 1px solid #333; }
+        .main-container { display: flex; flex: 1; gap: 10px; padding: 10px; height: calc(100vh - 200px); }
+        .preview-pane { flex: 2; background: #000; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #333; overflow: hidden; }
+        video { max-width: 100%; max-height: 100%; border-radius: 4px; }
+        .control-pane { flex: 1; background: #1e1e1e; padding: 15px; border-radius: 6px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #333; }
+        .timeline-pane { height: 160px; background: #1a1a1a; border-top: 1px solid #333; padding: 12px 15px; display: flex; flex-direction: column; gap: 10px; }
+        .timeline-header { display: flex; align-items: center; gap: 15px; }
+        .clip-track { display: flex; gap: 8px; overflow-x: auto; flex-grow: 1; align-items: center; background: #111; padding: 8px; border-radius: 4px; border: 1px solid #222; }
+        .clip-item { background: #2563eb; padding: 8px 12px; border-radius: 4px; cursor: grab; font-size: 12px; white-space: nowrap; border: 1px solid #60a5fa; flex-shrink: 0; }
+        .clip-item:active { cursor: grabbing; }
+        button { padding: 10px 15px; cursor: pointer; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 13px; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-play { background: #ca8a04; }
+        .btn-merge { background: #16a34a; }
+        .btn-add { background: #2563eb; }
     </style>
 </head>
 <body>
-    <div class="flex">
-        <div class="preview"><video id="vid" controls style="width:100%"></video></div>
-        <div class="controls">
-            <button id="btnPlay" style="background:#ca8a04;">▶️ Play Semua Urutan</button>
-            <button id="btnMerge" style="background:#16a34a;">🔗 Render & Gabung</button>
-            <div id="status" style="font-size:12px; color:#aaa;">Status: Siap.</div>
+    <header>🎬 Web Editor Pro</header>
+    
+    <div class="main-container">
+        <div class="preview-pane">
+            <video id="vid" controls></video>
+        </div>
+        <div class="control-pane">
+            <h3 style="margin:0 0 5px 0; font-size:14px; color:#60a5fa;">Panel Kontrol</h3>
+            <button id="btnPlay" class="btn-play">▶️ Play Semua Urutan</button>
+            <button id="btnMerge" class="btn-merge">🔗 Render & Gabung Video</button>
+            <div id="status" style="font-size:12px; color:#aaa; margin-top:5px; word-break:break-word;">Status: Siap memproses.</div>
         </div>
     </div>
-    <div class="timeline">
-        <button onclick="document.getElementById('up').click()">➕ Tambah Video</button>
-        <input type="file" id="up" multiple style="display:none;">
-        <div id="track" style="margin-top:10px; display:flex; gap:10px; overflow-x:auto;"></div>
+
+    <div class="timeline-pane">
+        <div class="timeline-header">
+            <span style="font-size:13px; font-weight:bold; color:#ccc;">Timeline V1 (Video)</span>
+            <button class="btn-add" onclick="document.getElementById('up').click()">➕ Tambah Video</button>
+            <input type="file" id="up" accept="video/mp4,video/mov" multiple style="display:none;">
+        </div>
+        <div class="clip-track" id="track">
+            <span style="color:#555; font-size:12px; font-style:italic;">Belum ada video ditambahkan. Klik "Tambah Video" di atas.</span>
+        </div>
     </div>
+
     <script>
         const { createFFmpeg, fetchFile } = FFmpeg;
         const ffmpeg = createFFmpeg({ log: true });
         let files = [], dragIdx = null;
 
-        function render() {
-            const track = document.getElementById('track'); track.innerHTML = '';
+        function renderTimeline() {
+            const track = document.getElementById('track');
+            track.innerHTML = '';
+            
+            if (files.length === 0) {
+                track.innerHTML = '<span style="color:#555; font-size:12px; font-style:italic;">Belum ada video ditambahkan. Klik "Tambah Video" di atas.</span>';
+                return;
+            }
+
             files.forEach((f, i) => {
                 const div = document.createElement('div');
-                div.className = 'clip'; div.draggable = true; div.innerText = f.name;
+                div.className = 'clip-item';
+                div.draggable = true;
+                div.innerText = `🎞️ ${f.name}`;
+                
                 div.ondragstart = () => dragIdx = i;
                 div.ondragover = (e) => e.preventDefault();
-                div.ondrop = () => { let t = files[dragIdx]; files[dragIdx] = files[i]; files[i] = t; render(); };
-                div.onclick = () => document.getElementById('vid').src = URL.createObjectURL(f);
+                div.ondrop = () => {
+                    let temp = files[dragIdx];
+                    files[dragIdx] = files[i];
+                    files[i] = temp;
+                    renderTimeline();
+                };
+                
+                div.onclick = () => {
+                    document.getElementById('vid').src = URL.createObjectURL(f);
+                };
+                
                 track.appendChild(div);
             });
         }
 
-        document.getElementById('up').onchange = (e) => { files.push(...e.target.files); render(); };
+        document.getElementById('up').onchange = (e) => {
+            const newFiles = Array.from(e.target.files);
+            if (newFiles.length > 0) {
+                files.push(...newFiles);
+                renderTimeline();
+                document.getElementById('status').innerText = `Status: ${files.length} video dimuat.`;
+            }
+            e.target.value = '';
+        };
         
         document.getElementById('btnPlay').onclick = () => {
+            if (files.length === 0) {
+                alert("Tambahkan video terlebih dahulu!");
+                return;
+            }
             let i = 0;
-            const p = () => {
-                if(i >= files.length) return;
-                document.getElementById('vid').src = URL.createObjectURL(files[i]);
-                document.getElementById('vid').play();
+            const playNext = () => {
+                if (i >= files.length) {
+                    document.getElementById('status').innerText = "Status: Selesai preview.";
+                    return;
+                }
+                const v = document.getElementById('vid');
+                v.src = URL.createObjectURL(files[i]);
+                v.play();
+                document.getElementById('status').innerText = `Status: Memutar klip ${i + 1} dari ${files.length}`;
             };
-            document.getElementById('vid').onended = () => { i++; p(); };
-            p();
+            document.getElementById('vid').onended = () => {
+                i++;
+                playNext();
+            };
+            playNext();
         };
 
         document.getElementById('btnMerge').onclick = async () => {
-            document.getElementById('status').innerText = "Memproses...";
-            await ffmpeg.load();
-            let args = [], filter = "", concat = "";
-            for(let i=0; i<files.length; i++) {
-                ffmpeg.FS('writeFile', `v${i}.mp4`, await fetchFile(files[i]));
-                args.push('-i', `v${i}.mp4`);
-                filter += `[${i}:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30[v${i}];`;
-                concat += `[v${i}][${i}:a]`;
+            if (files.length < 2) {
+                alert("Pilih minimal 2 video untuk digabungkan!");
+                return;
             }
-            await ffmpeg.run(...args, '-filter_complex', filter + `${concat}concat=n=${files.length}:v=1:a=1[v][a]`, '-map', '[v]', '-map', '[a]', 'out.mp4');
-            const url = URL.createObjectURL(new Blob([ffmpeg.FS('readFile', 'out.mp4').buffer]));
-            document.getElementById('status').innerHTML = `<a href="${url}" download="hasil.mp4">⬇️ Klik untuk Unduh</a>`;
+            document.getElementById('status').innerText = "Status: Memuat mesin FFmpeg dan merender...";
+            try {
+                if (!ffmpeg.isLoaded()) {
+                    await ffmpeg.load();
+                }
+                let args = [], filter = "", concat = "";
+                for (let i = 0; i < files.length; i++) {
+                    ffmpeg.FS('writeFile', `v${i}.mp4`, await fetchFile(files[i]));
+                    args.push('-i', `v${i}.mp4`);
+                    filter += `[${i}:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30[v${i}];`;
+                    concat += `[v${i}][${i}:a]`;
+                }
+                await ffmpeg.run(...args, '-filter_complex', filter + `${concat}concat=n=${files.length}:v=1:a=1[v][a]`, '-map', '[v]', '-map', '[a]', 'out.mp4');
+                const data = ffmpeg.FS('readFile', 'out.mp4');
+                const url = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
+                document.getElementById('status').innerHTML = `Status: Selesai! <a href="${url}" download="hasil_gabung.mp4" style="color:#4ade80; font-weight:bold;">⬇️ Unduh Video</a>`;
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status').innerText = "Status: Terjadi kesalahan saat render.";
+            }
         };
     </script>
 </body>
