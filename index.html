@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Video Editor Internal</title>
+    
+    <!-- Script ajaib agar FFmpeg bisa jalan di GitHub Pages -->
+    <script src="https://cdn.jsdelivr.net/gh/gzuidhof/coi-serviceworker@master/coi-serviceworker.min.js"></script>
+    
+    <!-- Memuat pustaka FFmpeg.wasm -->
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+        .control-panel { margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 8px; }
+        video { margin-top: 15px; border: 1px solid #ccc; border-radius: 8px; background: #000; width: 100%; }
+        input[type="number"] { width: 60px; padding: 5px; }
+        button { padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #statusInfo { margin-top: 10px; font-weight: bold; color: #d9534f; }
+        #downloadLink { display: none; margin-top: 15px; font-weight: bold; color: #28a745; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <h2>Aplikasi Potong Video</h2>
+    
+    <input type="file" id="uploadVideo" accept="video/mp4, video/mov" />
+    <video id="videoPreview" controls></video>
+
+    <div class="control-panel">
+        <label>Mulai dari (detik): </label>
+        <input type="number" id="waktuMulai" value="0" min="0">
+        <br><br>
+        <label>Potong sampai (detik): </label>
+        <input type="number" id="waktuSelesai" value="10" min="1">
+        <br><br>
+        <button id="btnPotong">Potong Video</button>
+        
+        <div id="statusInfo"></div>
+        <a id="downloadLink" href="#" download="video_hasil_potong.mp4">⬇️ Download Video Hasil Potong</a>
+    </div>
+
+    <script>
+        const uploadInput = document.getElementById('uploadVideo');
+        const videoPreview = document.getElementById('videoPreview');
+        const btnPotong = document.getElementById('btnPotong');
+        const statusInfo = document.getElementById('statusInfo');
+        const downloadLink = document.getElementById('downloadLink');
+
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        const ffmpeg = createFFmpeg({ log: true });
+
+        uploadInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                videoPreview.src = URL.createObjectURL(file);
+                downloadLink.style.display = 'none';
+            }
+        });
+
+        btnPotong.addEventListener('click', async () => {
+            const file = uploadInput.files[0];
+            if (!file) {
+                alert("Harap pilih video terlebih dahulu!");
+                return;
+            }
+
+            const waktuMulai = document.getElementById('waktuMulai').value;
+            const waktuSelesai = document.getElementById('waktuSelesai').value;
+
+            btnPotong.disabled = true;
+            statusInfo.innerText = "Sistem sedang memuat mesin FFmpeg... (Ini mungkin memakan waktu beberapa detik)";
+
+            try {
+                if (!ffmpeg.isLoaded()) {
+                    await ffmpeg.load();
+                }
+
+                statusInfo.innerText = "Memproses pemotongan video... Mohon tunggu.";
+
+                const namaFileVirtual = 'input.mp4';
+                ffmpeg.FS('writeFile', namaFileVirtual, await fetchFile(file));
+
+                await ffmpeg.run('-i', namaFileVirtual, '-ss', waktuMulai, '-to', waktuSelesai, '-c', 'copy', 'output.mp4');
+
+                const data = ffmpeg.FS('readFile', 'output.mp4');
+                const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+                const videoUrl = URL.createObjectURL(videoBlob);
+                
+                downloadLink.href = videoUrl;
+                downloadLink.style.display = 'block';
+                statusInfo.innerText = "Selesai! Silakan unduh hasilnya.";
+
+            } catch (error) {
+                console.error(error);
+                statusInfo.innerText = "Terjadi kesalahan saat memproses video.";
+            } finally {
+                btnPotong.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+</html>
